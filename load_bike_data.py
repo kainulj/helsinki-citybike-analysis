@@ -1,3 +1,17 @@
+"""
+This script downloads city bike ride data from the HSL API
+and outputs a CSV file with the following columns:
+
+- Departure: Departure time (datetime)
+- Return: Return time (datetime)
+- Departure_id: Departure station ID (string)
+- Departure_name: Departure station name (string)
+- Return_id: Return station ID (string)
+- Return_name: Return station name (string)
+- Distance: Ride distance in meters (float)
+- Duration: Ride duration in seconds (float)
+"""
+
 import requests, zipfile, io
 import pandas as pd
 import argparse
