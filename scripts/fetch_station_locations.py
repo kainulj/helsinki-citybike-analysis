@@ -18,6 +18,9 @@ import overpy
 import pandas as pd
 import argparse
 import requests
+from pathlib import Path
+
+DATA_DIR = Path('data/raw/')
 
 parser = argparse.ArgumentParser(description="Fetch station locations script")
 
@@ -106,5 +109,11 @@ osm_missing['ID'] = ''
 
 df = pd.concat([hsl_df, osm_missing], ignore_index=True)
 
-print(f"Saving to {args.output}")
-df.to_csv(args.output, index=False)
+# Change the column names to lower case
+df.columns = df.columns.str.lower()
+
+# Create the data folder if it doesn't exist
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+print(f"Saving to {DATA_DIR / args.output}")
+df.to_csv(DATA_DIR / args.output, index=False)

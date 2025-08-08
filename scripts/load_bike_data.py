@@ -15,6 +15,9 @@ and outputs a CSV file with the following columns:
 import requests, zipfile, io
 import pandas as pd
 import argparse
+from pathlib import Path
+
+DATA_DIR = Path('data/raw/')
 
 parser = argparse.ArgumentParser(description="Download data script")
 
@@ -106,5 +109,11 @@ station_dict = {**ret_names.to_dict(), **dep_names.to_dict()}
 bike_df['Departure_name'] = bike_df['Departure_id'].map(station_dict)
 bike_df['Return_name'] = bike_df['Return_id'].map(station_dict)
 
-print(f"Saving to {args.output}")
-bike_df.to_csv(args.output, index=False)
+# Change the column names to lower case
+bike_df.columns = bike_df.columns.str.lower()
+
+# Create the data folder if it doesn't exist
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+print(f"Saving to {DATA_DIR / args.output}")
+bike_df.to_csv(DATA_DIR / args.output, index=False)
