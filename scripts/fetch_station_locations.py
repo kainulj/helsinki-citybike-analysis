@@ -18,102 +18,102 @@ import overpy
 import pandas as pd
 import argparse
 import requests
-from pathlib import Path
+import os
 
-DATA_DIR = Path('data/raw/')
+def main(output, api_key):
+    api = overpy.Overpass()
 
-parser = argparse.ArgumentParser(description="Fetch station locations script")
+    # Fetch from Digitransit API
+    url = "https://api.digitransit.fi/routing/v2/hsl/gtfs/v1"
 
-parser.add_argument('--output', type=str, default='station_locations.csv', help='Output file name')
-parser.add_argument('--api-key', type=str, required=True, help='API key for Digitransit')
+    query = """
+    {
+    vehicleRentalStations {
+        stationId
+        name
+        lat
+        lon
+        capacity
+    }
+    }
+    """
 
-args = parser.parse_args()
+    headers = {
+        "Content-Type": "application/json",
+        "digitransit-subscription-key": api_key
+    }
 
-api = overpy.Overpass()
+    response = requests.post(url, json={"query": query}, headers=headers)
 
-print("Fetching station locations from Digitransit...")
-# Fetch from Digitransit API
-url = "https://api.digitransit.fi/routing/v2/hsl/gtfs/v1"
+    # Extract data from the result
+    if response.status_code == 200:
+        data = response.json()
+        stations = data["data"]["vehicleRentalStations"]
+        hsl_df = pd.DataFrame(stations)
+        hsl_df.rename(columns={"stationId": "ID"}, inplace=True)
 
-query = """
-{
-  vehicleRentalStations {
-    stationId
-    name
-    lat
-    lon
-    capacity
-  }
-}
-"""
+    # Keep stations in Espoo and Helsinki
+    ID_PREFIX = 'smoove:'
 
-headers = {
-    "Content-Type": "application/json",
-    "digitransit-subscription-key": args.api_key
-}
+    # Filter by known station ID prefix and remove it from the IDs
+    hsl_df = hsl_df[hsl_df['ID'].str.startswith(ID_PREFIX)]
+    hsl_df['ID'] = hsl_df['ID'].str.replace(ID_PREFIX, '', regex=False)
 
-response = requests.post(url, json={"query": query}, headers=headers)
+    hsl_df['source'] = 'HSL'
 
-# Extract data from the result
-if response.status_code == 200:
-    data = response.json()
-    stations = data["data"]["vehicleRentalStations"]
-    hsl_df = pd.DataFrame(stations)
-    hsl_df.rename(columns={"stationId": "ID"}, inplace=True)
+    # Fetch from OpenStreetMap
+    query = """
+    area["name"="Helsinki"]->.helsinki;
+    area["name"="Espoo"]->.espoo;
 
-# Keep stations in Espoo and Helsinki
-ID_PREFIX = 'smoove:'
+    (
+    node["amenity"="bicycle_rental"](area.helsinki);
+    node["amenity"="bicycle_rental"](area.espoo);
+    );
+    out body;
+    """
 
-# Filter by known station ID prefix and remove it from the IDs
-hsl_df = hsl_df[hsl_df['ID'].str.startswith(ID_PREFIX)]
-hsl_df['ID'] = hsl_df['ID'].str.replace(ID_PREFIX, '', regex=False)
+    result = api.query(query)
 
-hsl_df['source'] = 'HSL'
-
-print("Fetching station locations from OpenStreetMap...")
-# Fetch from OpenStreetMap
-query = """
-area["name"="Helsinki"]->.helsinki;
-area["name"="Espoo"]->.espoo;
-
-(
-  node["amenity"="bicycle_rental"](area.helsinki);
-  node["amenity"="bicycle_rental"](area.espoo);
-);
-out body;
-"""
-
-result = api.query(query)
-
-# Extract data from the result
-data = []
-for node in result.nodes:
-    data.append({
-        "name": node.tags.get("name", "Unknown"),
-        "lat": float(node.lat),
-        "lon": float(node.lon),
-        "capacity": int(node.tags.get("capacity", 0))
-    })
+    # Extract data from the result
+    data = []
+    for node in result.nodes:
+        data.append({
+            "name": node.tags.get("name", "Unknown"),
+            "lat": float(node.lat),
+            "lon": float(node.lon),
+            "capacity": int(node.tags.get("capacity", 0))
+        })
 
 
-osm_df = pd.DataFrame(data)
-osm_df['source'] = 'OSM'
+    osm_df = pd.DataFrame(data)
+    osm_df['source'] = 'OSM'
 
-# Remove rows with 'Unknown' name
-osm_df = osm_df[osm_df['name'] != 'Unknown']
+    # Remove rows with 'Unknown' name
+    osm_df = osm_df[osm_df['name'] != 'Unknown']
 
-# Use HSL data as the base and add missing stations from OSM
-matched_names = set(hsl_df['name'])
-osm_missing = osm_df[~osm_df['name'].isin(matched_names)].copy()
-osm_missing['ID'] = ''
+    # Use HSL data as the base and add missing stations from OSM
+    matched_names = set(hsl_df['name'])
+    osm_missing = osm_df[~osm_df['name'].isin(matched_names)].copy()
+    osm_missing['ID'] = ''
 
-df = pd.concat([hsl_df, osm_missing], ignore_index=True)
+    df = pd.concat([hsl_df, osm_missing], ignore_index=True)
 
-# Change the column names to lower case
-df.columns = df.columns.str.lower()
+    # Change the column names to lower case
+    df.columns = df.columns.str.lower()
 
-# Create the data folder if it doesn't exist
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+    df.to_csv(args.output, index=False)
+    print(f"Saved station locations to {output}")
 
-print(f"Saving to {DATA_DIR / args.output}")
-df.to_csv(DATA_DIR / args.output, index=False)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Fetch station locations script")
+
+    parser.add_argument('--output', type=str, default='data/raw/stations.csv', help='Output CSV file path')
+    parser.add_argument('--api-key', type=str, required=True, help='API key for Digitransit')
+
+    args = parser.parse_args()
+
+    # Create the output folder if it doesn't exist
+    os.makedirs(os.path.dirname(args.output), exist_ok=True)
+
+    main(args.output, args.api_key)
