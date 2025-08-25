@@ -116,6 +116,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Create the output folder if it doesn't exist
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
+    dir_name = os.path.dirname(args.output)
+    if dir_name:
+        os.makedirs(dir_name, exist_ok=True)
 
     main(args.start_year, args.end_year, args.output)

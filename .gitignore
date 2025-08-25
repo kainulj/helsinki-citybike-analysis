@@ -2,3 +2,5 @@
 *.csv
 citybikes/
 data/
+__pycache__/
+*.pyc

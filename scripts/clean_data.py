@@ -1,48 +1,14 @@
 """
 This script cleans the city bike data and merges it with station information.
+Also cleans the weather data.
 """
 
 import pandas as pd
 import os
 import argparse
+from citybike.data_cleaning import merge_station_info, handle_wind_speed_gaps
 
-
-def merge_station_info(bike_df, station_df, station_type):
-    """ Merges station information into the bike ride DataFrame. """
-
-    hsl_stations = station_df[station_df['source'] == 'HSL']
-    osm_stations = station_df[station_df['source'] == 'OSM']
-
-    # Merge HSL station info
-    bike_df = bike_df.merge(
-        hsl_stations[['lat', 'lon', 'capacity']].add_prefix(f'{station_type}_'),
-        left_on=f'{station_type}_id',
-        right_index=True,
-        how='left'
-    )
-    # Merge OSM station info as separate columns
-    bike_df = bike_df.merge(
-        osm_stations[['lat', 'lon', 'capacity', 'name']].add_prefix(f'OSM_{station_type}_'),
-        left_on=f'{station_type}_name',
-        right_on=f'OSM_{station_type}_name',
-        how='left'
-    )
-
-    # Fill missing values from OSM
-    for col in ['lat', 'lon', 'capacity']:
-        bike_df[f'{station_type}_{col}'] = bike_df[f'{station_type}_{col}'].fillna(bike_df[f'OSM_{station_type}_{col}'])
-
-    # Drop the OSM columns
-    bike_df = bike_df.drop(columns=[
-        f'OSM_{station_type}_name',
-        f'OSM_{station_type}_lat',
-        f'OSM_{station_type}_lon',
-        f'OSM_{station_type}_capacity'
-    ])
-
-    return bike_df
-
-def main(ride_data, station_data, output):
+def clean_ride_data(ride_data, station_data):
     # Load the bike ride data
     dtypes = {'departure_id': str, 'departure_name': str, 
             'return_id': str, 'return_name': str}
@@ -79,18 +45,51 @@ def main(ride_data, station_data, output):
     bike_df = merge_station_info(bike_df, station_df, station_type='departure')
     bike_df = merge_station_info(bike_df, station_df, station_type='return')
 
-    bike_df.to_csv(output, index=False)
-    print(f"Saved merged dataframe to {output}")
+    return bike_df
+
+def clean_weather_data(weather_data):
+    # Load the weather data
+    weather_df = pd.read_csv(weather_data, index_col='time')
+
+    # Add flag column to indicate missing precipitation data and replace all missing precipitation values with -1
+    weather_df['precip_missing'] = weather_df['precipitation'].isna().astype(int)
+    weather_df['precipitation'] = weather_df['precipitation'].fillna(-1)
+
+    # Forward-fill all missing temperature values
+    weather_df['temperature'] = weather_df['temperature'].ffill()
+
+    # Add flag column to indicate missing windspeed data
+    weather_df['ws_missing'] = weather_df['wind_speed'].isna().astype(int)
+    
+    weather_df = handle_wind_speed_gaps(weather_df)
+
+    return weather_df
+
+def main(ride_data, station_data, weather_data, bike_output, weather_output):
+    bike_df = clean_ride_data(ride_data, station_data)
+    weather_df = clean_weather_data(weather_data)
+
+    bike_df.to_csv(bike_output, index=False)
+    print(f"Saved merged bike dataframe to {bike_output}")
+
+    weather_df.to_csv(weather_output, index=True)
+    print(f"Saved weather dataframe to {weather_output}")
+
 
 if __name__ == "__main__":
     args = argparse.ArgumentParser(description="Clean and prepare bike data")
     args.add_argument('--ride_data', type=str, default='data/raw/bike_rides.csv', help='Input ride data CSV file')
     args.add_argument('--station_data', type=str, default='data/raw/stations.csv', help='Input station data CSV file')
-    args.add_argument('--output', type=str, default='data/clean/cleaned_bike_data.csv', help='Output CSV file path')
+    args.add_argument('--weather_data', type=str, default='data/raw/weather.csv', help='Input weather data CSV file')
+    args.add_argument('--bike_output', type=str, default='data/clean/bike_rides_cleaned.csv', help='Output bike ride CSV file path')
+    args.add_argument('--weather_output', type=str, default='data/clean/weather_cleaned.csv', help='Output weather CSV file path')
 
     args = args.parse_args()
 
-    # Create the output folder if it doesn't exist
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
+    # Create the output folders if they don't exist
+    for path in [args.bike_output, args.weather_output]:
+        dir_name = os.path.dirname(path)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
 
-    main(args.ride_data, args.station_data, args.output)
+    main(args.ride_data, args.station_data, args.weather_data, args.bike_output, args.weather_output)

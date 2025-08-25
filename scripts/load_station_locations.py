@@ -20,9 +20,7 @@ import argparse
 import requests
 import os
 
-def main(output, api_key):
-    api = overpy.Overpass()
-
+def load_digitransit_stations(api_key):
     # Fetch from Digitransit API
     url = "https://api.digitransit.fi/routing/v2/hsl/gtfs/v1"
 
@@ -61,7 +59,12 @@ def main(output, api_key):
 
     hsl_df['source'] = 'HSL'
 
+    return hsl_df
+
+def load_OSM_stations():
     # Fetch from OpenStreetMap
+    api = overpy.Overpass()
+    
     query = """
     area["name"="Helsinki"]->.helsinki;
     area["name"="Espoo"]->.espoo;
@@ -91,13 +94,23 @@ def main(output, api_key):
 
     # Remove rows with 'Unknown' name
     osm_df = osm_df[osm_df['name'] != 'Unknown']
+    return osm_df
 
-    # Use HSL data as the base and add missing stations from OSM
-    matched_names = set(hsl_df['name'])
-    osm_missing = osm_df[~osm_df['name'].isin(matched_names)].copy()
-    osm_missing['ID'] = ''
+def main(output, api_key):
+    if api_key:
+        hsl_df = load_digitransit_stations(api_key)
+        osm_df = load_OSM_stations()
+    
+        # Use HSL data as the base and add missing stations from OSM
+        matched_names = set(hsl_df['name'])
+        osm_missing = osm_df[~osm_df['name'].isin(matched_names)].copy()
+        osm_missing['ID'] = ''
 
-    df = pd.concat([hsl_df, osm_missing], ignore_index=True)
+        df = pd.concat([hsl_df, osm_missing], ignore_index=True)
+    else:
+        print('API key not provided, using OSM data')
+        df = load_OSM_stations()
+        df['ID'] = ''
 
     # Change the column names to lower case
     df.columns = df.columns.str.lower()
@@ -109,11 +122,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fetch station locations script")
 
     parser.add_argument('--output', type=str, default='data/raw/stations.csv', help='Output CSV file path')
-    parser.add_argument('--api-key', type=str, required=True, help='API key for Digitransit')
+    parser.add_argument('--api-key', type=str, default='', help='API key for Digitransit')
 
     args = parser.parse_args()
 
     # Create the output folder if it doesn't exist
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
+    dir_name = os.path.dirname(args.output)
+    if dir_name:
+        os.makedirs(dir_name, exist_ok=True)
 
     main(args.output, args.api_key)
