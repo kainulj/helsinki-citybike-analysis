@@ -1,15 +1,29 @@
 """
-This script downloads city bike ride data from the HSL API
-and outputs a CSV file with the following columns:
+Fetch Helsinki city bike ride data from the HSL API and save it as a CSV file.
 
-- Departure: Departure time (datetime)
-- Return: Return time (datetime)
-- Departure_id: Departure station ID (string)
-- Departure_name: Departure station name (string)
-- Return_id: Return station ID (string)
-- Return_name: Return station name (string)
-- Distance: Ride distance in meters (float)
-- Duration: Ride duration in seconds (float)
+This script retrieves bike ride data for the specified year range from the HSL open data API,
+combines all records into a single dataset, and outputs a CSV file with the following columns:
+
+Output columns:
+- departure: Departure time (datetime)
+- return: Return time (datetime)
+- departure_id: Departure station ID (string)
+- departure_name: Departure station name (string)
+- return_id: Return station ID (string)
+- return_name: Return station name (string)
+- distance: Ride distance in meters (float)
+- duration: Ride duration in seconds (float)
+
+Command-line arguments:
+    --start-year (int): The first year of the timeframe (inclusive).
+    --end-year (int): The last year of the timeframe (inclusive).
+    --output (str): Path to save the processed CSV file.
+
+Example:
+    python fetch_bike_data.py \
+        --start-year 2020 \
+        --end-year 2024 \
+        --output data/raw/bike_rides.csv
 """
 
 import requests, zipfile, io
@@ -17,13 +31,21 @@ import pandas as pd
 import argparse
 import os
 
-def main(start_year, end_year, output):
+def fetch_data(start_year, end_year):
+    """
+    Fetch city bike data from HSL API.
+    Args:
+        start_year (int): The first year of the time range.
+        end_year (int): The last year of the time range.
+    Returns:
+        pd.DataFrame: DataFrame with the fetched data.
+    """
     dtypes = {'Departure': str, 'Return': str, 'Departure_id': str, 'Departure_name': str, 
                 'Return_id': str, 'Return_name': str}
     columns = ['Departure', 'Return', 'Departure_id', 'Departure_name', 'Return_id', 'Return_name', 'Distance', 'Duration']
     dfs = []
 
-    print(f"Downloading data from {start_year} to {end_year}")
+    print(f"Fetching data from {start_year} to {end_year}")
 
     for year in range(start_year, end_year + 1):
         # Load the data
@@ -43,23 +65,22 @@ def main(start_year, end_year, output):
 
     # Combine the data into one DataFrame
     bike_df = pd.concat(dfs, ignore_index=True)
+    return bike_df
 
-    # Change the departure and return columns to date time and sort the dataframe by the departure time
-    bike_df['Departure'] = pd.to_datetime(bike_df['Departure'], errors='coerce')
-    bike_df['Return'] = pd.to_datetime(bike_df['Return'], errors='coerce')
-    bike_df.sort_values(by=['Departure'], inplace=True)
+def merge_station_ids(df):
+    """
+    Merge IDs for stations with identical names by assigning the most frequently used ID to each name.
+    Args:
+        df (pd.DataFrame): DataFrame with ride data.
+    Returns:
+        pd.DataFrame: DataFrame with merged station IDs.
+    """
 
-    # Remove extra whitespaces from the station names
-    bike_df['Departure_name'] = bike_df['Departure_name'].str.strip()
-    bike_df['Return_name'] = bike_df['Return_name'].str.strip()
-
-    # Merge the ids for stations with identical names by assigning the most frequently used ID to each name
     # Count the occurrence of each (ID, name) pair
     station_usage = pd.concat([
-        bike_df[['Departure_id', 'Departure_name']].rename(columns={'Departure_id': 'id', 'Departure_name': 'name'}),
-        bike_df[['Return_id', 'Return_name']].rename(columns={'Return_id': 'id', 'Return_name': 'name'})
+        df[['departure_id', 'departure_name']].rename(columns={'departure_id': 'id', 'departure_name': 'name'}),
+        df[['return_id', 'return_name']].rename(columns={'return_id': 'id', 'return_name': 'name'})
     ])
-
     usage_counts = station_usage.groupby(['id', 'name']).size().reset_index(name='count')
 
     # Get the most common ID for each station name
@@ -71,37 +92,71 @@ def main(start_year, end_year, output):
         .reset_index()[['name', 'id']]
         .rename(columns={'id': 'main_id'})
     )
-    # Merge the main IDs back to the usage counts
+
     id_map = usage_counts.merge(main_ids, on='name')
 
     # Create a dictionary to map old IDs to main IDs
     id_merge_dict = id_map.set_index('id')['main_id'].to_dict()
 
     # Map the old IDs to main IDs in the bike_df
-    bike_df['Departure_id'] = bike_df['Departure_id'].map(id_merge_dict).fillna(bike_df['Departure_id'])
-    bike_df['Return_id'] = bike_df['Return_id'].map(id_merge_dict).fillna(bike_df['Return_id'] )
+    df['departure_id'] = df['departure_id'].map(id_merge_dict).fillna(df['departure_id'])
+    df['return_id'] = df['return_id'].map(id_merge_dict).fillna(df['return_id'])
+    return df
 
-    # Some station names might have changed over time, so we update the names to the latest known names
-    # Get the latest name per Departure_id
+def update_station_names(df):
+    """
+    Update station names to the latest known names for each station ID.
+    Args:
+        df (pd.DataFrame): DataFrame with ride data.
+    Returns:
+        pd.DataFrame: DataFrame with updated station names.
+    """
+    
+    # Get the latest known departure names per station ID
     dep_names = (
-        bike_df.dropna(subset=['Departure_name'])
-        .drop_duplicates('Departure_id', keep='last')
-        .set_index('Departure_id')['Departure_name']
+        df.dropna(subset=['departure_name'])
+        .drop_duplicates('departure_id', keep='last')
+        .set_index('departure_id')['departure_name']
     )
-    # Get the latest name per Return_id
+
+    # Get the latest known return names per station ID
     ret_names = (
-        bike_df.dropna(subset=['Return_name'])
-        .drop_duplicates('Return_id', keep='last')
-        .set_index('Return_id')['Return_name']
+        df.dropna(subset=['return_name'])
+        .drop_duplicates('return_id', keep='last')
+        .set_index('return_id')['return_name']
     )
 
     # Map the latest names to match the station ids
     station_dict = {**ret_names.to_dict(), **dep_names.to_dict()}
-    bike_df['Departure_name'] = bike_df['Departure_id'].map(station_dict)
-    bike_df['Return_name'] = bike_df['Return_id'].map(station_dict)
+    df['departure_name'] = df['departure_id'].map(station_dict)
+    df['return_name'] = df['return_id'].map(station_dict)
+    return df
+
+def main(start_year, end_year, output):
+    """
+    Main pipeline for processing raw bike trip data.
+    Fetches, cleans, merges station info, and saves the result to CSV.
+    Args:
+        start_year (int): The start year of the time range.
+        end_year (int): The end year of the time range.
+        output (str): Path to output CSV file.
+    """
+    bike_df = fetch_data(start_year, end_year)
 
     # Change the column names to lower case
     bike_df.columns = bike_df.columns.str.lower()
+
+    # Convert departure and return times to datetime, then sort by departure time
+    bike_df['departure'] = pd.to_datetime(bike_df['departure'], errors='coerce')
+    bike_df['return'] = pd.to_datetime(bike_df['return'], errors='coerce')
+    bike_df.sort_values(by=['departure'], inplace=True)
+    
+    # Clean the station names
+    bike_df['departure_name'] = bike_df['departure_name'].str.strip()
+    bike_df['return_name'] = bike_df['return_name'].str.strip()
+
+    bike_df = merge_station_ids(bike_df)
+    bike_df = update_station_names(bike_df)
 
     bike_df.to_csv(output, index=False)
     print(f"Saved bike ride data to {output}")
