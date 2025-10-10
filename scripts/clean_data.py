@@ -1,6 +1,37 @@
 """
-This script cleans the city bike data and merges it with station information.
-Also cleans the weather data.
+Clean and preprocess Helsinki city bike ride and weather data for analysis.
+
+This script performs data cleaning and preprocessing for the Helsinki city bike dataset.
+It prepares cleaned versions of both ride and weather data for downstream analysis and modeling.
+
+Features:
+- Cleans raw bike ride data, removes outliers, fills missing values, and merges with station metadata.
+- Cleans weather data, handles missing values and gaps, and adds flags for missing measurements.
+- Outputs cleaned bike ride and weather datasets as CSV files for downstream analysis.
+
+Inputs:
+- Raw bike ride CSV file (with ride details and station IDs)
+- Station metadata CSV file (with station names, locations, and IDs)
+- Raw weather CSV file (with temperature, wind speed, precipitation)
+
+Outputs:
+- Cleaned bike ride CSV file
+- Cleaned weather CSV file
+
+Command-line arguments:
+    --ride-data (str): Path to the raw bike ride CSV file.
+    --station-data (str): Path to the station metadata CSV file.
+    --weather-data (str): Path to the raw weather data CSV file.
+    --bike-output (str): Path to save the cleaned bike ride data CSV file.
+    --weather-output (str): Path to save the cleaned weather data CSV file.
+
+Example:
+    python clean_data.py \
+        --ride-data data/raw/bike_rides.csv \
+        --station-data data/raw/stations.csv \
+        --weather-data data/raw/weather.csv \
+        --bike-output data/clean/bike_rides_cleaned.csv \
+        --weather-output data/clean/weather_cleaned.csv
 """
 
 import pandas as pd
@@ -9,6 +40,14 @@ import argparse
 from citybike.data_cleaning import merge_station_info, handle_wind_speed_gaps
 
 def clean_ride_data(ride_data, station_data):
+    """
+    Clean bike ride data and merge with station information.
+    Args:
+        ride_data (str): Path to raw bike ride CSV file.
+        station_data (str): Path to station info CSV file.
+    Returns:
+        pd.DataFrame: Cleaned and merged bike ride dataframe.
+    """
     # Load the bike ride data
     dtypes = {'departure_id': str, 'departure_name': str, 
             'return_id': str, 'return_name': str}
@@ -48,6 +87,13 @@ def clean_ride_data(ride_data, station_data):
     return bike_df
 
 def clean_weather_data(weather_data):
+    """
+    Clean weather data by handling missing values and gaps.
+    Args:
+        weather_data (str): Path to raw weather CSV file.
+    Returns:
+        pd.DataFrame: Cleaned weather dataframe.
+    """
     # Load the weather data
     weather_df = pd.read_csv(weather_data, index_col='time')
 
@@ -66,6 +112,15 @@ def clean_weather_data(weather_data):
     return weather_df
 
 def main(ride_data, station_data, weather_data, bike_output, weather_output):
+    """
+    Main function to clean bike and weather data, then save to output files.
+    Args:
+        ride_data (str): Path to raw bike ride CSV file.
+        station_data (str): Path to station info CSV file.
+        weather_data (str): Path to raw weather CSV file.
+        bike_output (str): Output path for cleaned bike data.
+        weather_output (str): Output path for cleaned weather data.
+    """
     bike_df = clean_ride_data(ride_data, station_data)
     weather_df = clean_weather_data(weather_data)
 

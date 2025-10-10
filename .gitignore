@@ -1,6 +1,6 @@
 .ipynb_checkpoints
 *.csv
-citybikes/
+citybike_env/
 data/
 __pycache__/
 *.pyc

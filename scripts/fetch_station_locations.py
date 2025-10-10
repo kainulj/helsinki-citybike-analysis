@@ -1,7 +1,11 @@
 """
-This script downloads city bike station locations from Digitransit and OpenStreetMap,
-and outputs a CSV file with the following columns:
+Fetch city bike station locations from Digitransit and OpenStreetMap (OSM) and save them as a CSV file.
 
+This script retrieves official HSL city bike stations from the Digitransit API and
+supplements missing or unmatched entries with data from OpenStreetMap.
+An API key is required to access Digitransit data. Only OSM stations will be fetched if API is not provided.
+
+Output columns:
 - ID: Station identifier (string; may be missing for OSM stations)
 - name: Station name (string)
 - lat: Latitude (float)
@@ -11,7 +15,16 @@ and outputs a CSV file with the following columns:
 
 The script uses the Digitransit API to fetch official HSL bike stations
 and supplements missing entries using OpenStreetMap.
-An API key is required to access data from Digitransit.
+An API key is required to access data from Digitransit without it the script only fetches OSM data.
+
+Command-line arguments:
+    --output (str): Path to save the processed CSV file.
+    --api-key (str): Digitransit API key. If omitted, only OSM data will be downloaded.
+
+Example:
+    python fetch_station_data.py \
+        --output data/raw/stations.csv
+        --api-key <YOUR_API_KEY>
 """
 
 import overpy
@@ -20,8 +33,15 @@ import argparse
 import requests
 import os
 
-def load_digitransit_stations(api_key):
-    # Fetch from Digitransit API
+def fetch_digitransit_stations(api_key):
+    """
+    Fetch city bike station data from Digitransit API using the provided API key.
+    Args:
+        api_key (str): Digitransit API key.
+    Returns:
+        pd.DataFrame: DataFrame containing station ID, name, lat, lon, capacity, and source.
+    """
+
     url = "https://api.digitransit.fi/routing/v2/hsl/gtfs/v1"
 
     query = """
@@ -61,8 +81,13 @@ def load_digitransit_stations(api_key):
 
     return hsl_df
 
-def load_OSM_stations():
-    # Fetch from OpenStreetMap
+def fetch_OSM_stations():
+    """
+    Fetch city bike station data from OpenStreetMap.
+    Returns:
+        pd.DataFrame: DataFrame containing station name, lat, lon, capacity, and source.
+    """
+
     api = overpy.Overpass()
     
     query = """
@@ -97,9 +122,15 @@ def load_OSM_stations():
     return osm_df
 
 def main(output, api_key):
+    """
+    Main function to fetch station data from Digitransit and OSM, merge, and save to CSV.
+    Args:
+        output (str): Path to output CSV file.
+        api_key (str): Digitransit API key.
+    """
     if api_key:
-        hsl_df = load_digitransit_stations(api_key)
-        osm_df = load_OSM_stations()
+        hsl_df = fetch_digitransit_stations(api_key)
+        osm_df = fetch_OSM_stations()
     
         # Use HSL data as the base and add missing stations from OSM
         matched_names = set(hsl_df['name'])
@@ -109,7 +140,7 @@ def main(output, api_key):
         df = pd.concat([hsl_df, osm_missing], ignore_index=True)
     else:
         print('API key not provided, using OSM data')
-        df = load_OSM_stations()
+        df = fetch_OSM_stations()
         df['ID'] = ''
 
     # Change the column names to lower case

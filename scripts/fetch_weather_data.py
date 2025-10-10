@@ -1,11 +1,27 @@
 """
-This script downloads weather data from the Finnish Meteorolocigal Institute (FIM) API
-and outputs a CSV file with the following columns:
+Fetch weather data from the Finnish Meteorological Institute (FMI) API for the Helsinki city bike season (April–October)
+and save it as a CSV file.
 
-- time: Observation time (datetime)
-- air temperature: air temperature in °C (float)
-- wind speed; wind speed in m/s (float)
-- precipitation amount: precipitation in mm (float)
+This script retrieves hourly weather observations for the specified year range from the FMI API,
+restricted to the city bike operating months (April–October), and outputs a CSV file with the following columns:
+
+Output columns:
+- Time: Observation time (datetime)
+- Air temperature: Air temperature in °C (float)
+- Wind speed: Wind speed in m/s (float)
+- Precipitation amount: Precipitation in mm (float)
+
+
+Command-line arguments:
+    --start-year (int): The first year of the timeframe to fetch  (inclusive).
+    --end-year (int): The last year of the timeframe to fetch  (inclusive).
+    --output (str): Path to save the combined CSV file.
+
+Example:
+    python fetch_weather_data.py \
+        --start-year 2020 \
+        --end-year 2024 \
+        --output data/raw/weather.csv
 """
 
 import argparse
@@ -15,7 +31,19 @@ from fmiopendata.wfs import download_stored_query
 from datetime import datetime, timedelta
 import pytz
 
-def fetch_fmi_data(station, params,start_time, end_time, local_time, utc):
+def fetch_fmi_data(station, params, start_time, end_time, local_time, utc):
+    """
+    Fetch weather data from the FMI API for a given station and time range.
+    Args:
+        station (str): Name of the weather station.
+        params (str): Comma-separated weather parameters to fetch.
+        start_time (datetime): Start of the time range (local time).
+        end_time (datetime): End of the time range (local time).
+        local_time (tzinfo): Local timezone object.
+        utc (tzinfo): UTC timezone object.
+    Returns:
+        pd.DataFrame: DataFrame containing weather observations for the specified period.
+    """
     # Conver the times to UTC
     start = local_time.localize(start_time).astimezone(utc).replace(tzinfo=None)
     end = local_time.localize(end_time).astimezone(utc).replace(tzinfo=None)
@@ -51,12 +79,20 @@ def fetch_fmi_data(station, params,start_time, end_time, local_time, utc):
     return pd.concat(results)
 
 def main(start_year, end_year, output):
+    """
+    Main function to fetch weather data for a range of years and save to CSV.
+    Args:
+        start_year (int): First year to fetch data for.
+        end_year (int): Last year to fetch data for.
+        output (str): Output CSV file path.
+    """
     local_time = pytz.timezone("Europe/Helsinki")
     utc = pytz.UTC
 
     # Get temperature, windspeed and precipitation values
     params = "t2m,ws_10min,r_1h"
 
+    # Fetch data from FMI API
     all_years = []
     for year in range(start_year, end_year + 1):
         start = datetime(year, 4, 1, 0, 0)
