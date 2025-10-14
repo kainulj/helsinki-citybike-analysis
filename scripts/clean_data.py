@@ -33,28 +33,29 @@ Example:
         --bike-output data/clean/bike_rides_cleaned.csv \
         --weather-output data/clean/weather_cleaned.csv
 """
-
 import pandas as pd
 import os
 import argparse
 from citybike.data_cleaning import merge_station_info, handle_wind_speed_gaps
+from citybike.io_utils import load_csv
 
-def clean_ride_data(ride_data, station_data):
+def clean_ride_data(ride_data, station_data, output):
     """
     Clean bike ride data and merge with station information.
     Args:
         ride_data (str): Path to raw bike ride CSV file.
         station_data (str): Path to station info CSV file.
-    Returns:
-        pd.DataFrame: Cleaned and merged bike ride dataframe.
+        output (str): Output path for cleaned bike data.
     """
-    # Load the bike ride data
-    dtypes = {'departure_id': str, 'departure_name': str, 
-            'return_id': str, 'return_name': str}
-    bike_df = pd.read_csv(ride_data, dtype=dtypes, parse_dates=['departure', 'return'])
+    # Load the data
+    dtypes = {'departure_id': str, 'departure_name': str, 'return_id': str, 'return_name': str}
+    try:
+        bike_df = load_csv(ride_data, dtype=dtypes, parse_dates=['departure', 'return'])
+        station_df = load_csv(station_data)
+    except FileNotFoundError as e:
+        print(e)
+        return
 
-    # Load the station data
-    station_df = pd.read_csv(station_data)
     station_df = station_df.set_index('id')
     # Add leading zeros to IDs
     station_df.index = station_df.index.fillna(-1).astype(int).astype(str).str.zfill(3)
@@ -84,19 +85,25 @@ def clean_ride_data(ride_data, station_data):
     bike_df = merge_station_info(bike_df, station_df, station_type='departure')
     bike_df = merge_station_info(bike_df, station_df, station_type='return')
 
+    bike_df.to_csv(output, index=False)
+    print(f"Saved merged bike dataframe to {output}")
+
     return bike_df
 
-def clean_weather_data(weather_data):
+def clean_weather_data(weather_data, output):
     """
     Clean weather data by handling missing values and gaps.
     Args:
         weather_data (str): Path to raw weather CSV file.
-    Returns:
-        pd.DataFrame: Cleaned weather dataframe.
+        output (str): Output path for cleaned weather data.
     """
     # Load the weather data
-    weather_df = pd.read_csv(weather_data, index_col='time')
-
+    try: 
+        weather_df = load_csv(weather_data, index_col='time')
+    except FileNotFoundError as e:
+        print(e)
+        return
+    
     # Add flag column to indicate missing precipitation data and replace all missing precipitation values with -1
     weather_df['precip_missing'] = weather_df['precipitation'].isna().astype(int)
     weather_df['precipitation'] = weather_df['precipitation'].fillna(-1)
@@ -109,7 +116,8 @@ def clean_weather_data(weather_data):
     
     weather_df = handle_wind_speed_gaps(weather_df)
 
-    return weather_df
+    weather_df.to_csv(output, index=True)
+    print(f"Saved weather dataframe to {output}")
 
 def main(ride_data, station_data, weather_data, bike_output, weather_output):
     """
@@ -121,14 +129,10 @@ def main(ride_data, station_data, weather_data, bike_output, weather_output):
         bike_output (str): Output path for cleaned bike data.
         weather_output (str): Output path for cleaned weather data.
     """
-    bike_df = clean_ride_data(ride_data, station_data)
-    weather_df = clean_weather_data(weather_data)
+    clean_ride_data(ride_data, station_data, bike_output)
+    weather_df = clean_weather_data(weather_data, weather_output)
 
-    bike_df.to_csv(bike_output, index=False)
-    print(f"Saved merged bike dataframe to {bike_output}")
-
-    weather_df.to_csv(weather_output, index=True)
-    print(f"Saved weather dataframe to {weather_output}")
+    
 
 
 if __name__ == "__main__":
