@@ -18,7 +18,7 @@ def cv(model, X, y, splits):
     rmse = -cv_score["test_neg_root_mean_squared_error"]
     r2 = cv_score["test_r2"]
 
-    print(f'Mean absolute error: {abs_error.mean():.3f} +/- {abs_error.std():.3f}')
+    print(f'MAE: {abs_error.mean():.3f} +/- {abs_error.std():.3f}')
     print(f'RMSE: {rmse.mean():.3f} +/- {rmse.std():.3f}')
     print(f'R2: {r2.mean():.3f} +/- {r2.std():.3f}')
 
@@ -61,7 +61,7 @@ def cv_two_phase(X, y, splits, clf, reg):
         scores['rmse'].append(metrics.root_mean_squared_error(y_val, reg_preds))
         scores['r2'].append(metrics.r2_score(y_val, reg_preds))
 
-    print(f'Mean absolute error: {np.mean(scores["mae"]):.3f} +/- {np.std(scores["mae"]):.3f}')
+    print(f'MAE: {np.mean(scores["mae"]):.3f} +/- {np.std(scores["mae"]):.3f}')
     print(f'RMSE: {np.mean(scores["rmse"]):.3f} +/- {np.std(scores["rmse"]):.3f}')
     print(f'R2: {np.mean(scores["r2"]):.3f} +/- {np.std(scores["r2"]):.3f}')
 
@@ -74,6 +74,6 @@ def evaluate(y_true, y_preds):
         y_preds (np.array): Predicted values.
     """
     y_true = y_true.to_numpy()
-    print(f'Mean absolute error: {metrics.mean_absolute_error(y_true, y_preds):.2f}')
+    print(f'MAE: {metrics.mean_absolute_error(y_true, y_preds):.2f}')
     print(f'RMSE: {metrics.root_mean_squared_error(y_true, y_preds):.2f}')
     print(f'R2: {metrics.r2_score(y_true, y_preds):.3f}')
