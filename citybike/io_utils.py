@@ -10,9 +10,10 @@ def load_csv(path, **kwargs):
         pd.DataFrame: Loaded DataFrame.
     Raises:
         FileNotFoundError: If the file does not exist.
+
     """
     try:
         return pd.read_csv(path, low_memory=False, **kwargs)
-    except Exception as e:
+    except FileNotFoundError:
         raise FileNotFoundError(f"File not found: {path}")
         
