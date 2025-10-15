@@ -130,18 +130,15 @@ def main(ride_data, station_data, weather_data, bike_output, weather_output):
         weather_output (str): Output path for cleaned weather data.
     """
     clean_ride_data(ride_data, station_data, bike_output)
-    weather_df = clean_weather_data(weather_data, weather_output)
-
-    
-
+    clean_weather_data(weather_data, weather_output)
 
 if __name__ == "__main__":
     args = argparse.ArgumentParser(description="Clean and prepare bike data")
-    args.add_argument('--ride_data', type=str, default='data/raw/bike_rides.csv', help='Input ride data CSV file')
-    args.add_argument('--station_data', type=str, default='data/raw/stations.csv', help='Input station data CSV file')
-    args.add_argument('--weather_data', type=str, default='data/raw/weather.csv', help='Input weather data CSV file')
-    args.add_argument('--bike_output', type=str, default='data/clean/bike_rides_cleaned.csv', help='Output bike ride CSV file path')
-    args.add_argument('--weather_output', type=str, default='data/clean/weather_cleaned.csv', help='Output weather CSV file path')
+    args.add_argument('--ride-data', type=str, default='data/raw/bike_rides.csv', help='Input ride data CSV file')
+    args.add_argument('--station-data', type=str, default='data/raw/stations.csv', help='Input station data CSV file')
+    args.add_argument('--weather-data', type=str, default='data/raw/weather.csv', help='Input weather data CSV file')
+    args.add_argument('--bike-output', type=str, default='data/clean/bike_rides_cleaned.csv', help='Output bike ride CSV file path')
+    args.add_argument('--weather-output', type=str, default='data/clean/weather_cleaned.csv', help='Output weather CSV file path')
 
     args = args.parse_args()
 
