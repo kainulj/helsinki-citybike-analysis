@@ -1,0 +1,11 @@
+pandas
+numpy
+matplotlib
+seaborn
+folium
+hyperopt
+lightgbm
+sklearn
+shap
+fmiopendata
+overpy

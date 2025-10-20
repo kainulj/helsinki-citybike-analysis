@@ -4,3 +4,4 @@ citybike_env/
 data/
 __pycache__/
 *.pyc
+models/
