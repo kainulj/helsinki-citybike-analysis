@@ -73,6 +73,8 @@ On weekends, peaks are broader and lower, reflecting more balanced leisure usage
 Bike usage increases steadily as temperature rises, suggesting weather conditions strongly influence rider activity. Cooler hours show lower ridership, while warmer hours see significantly higher demand.
 
 ### Spatial Patterns 
+[**View Interactive Map**](https://kainulj.github.io/helsinki-citybike-analysis/station_map.html)
+
 ![Station map](figures/station_map.png)  
 *Figure 3: Spatial distribution of city bike stations and usage intensity.* 
 
