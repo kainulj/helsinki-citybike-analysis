@@ -1,4 +1,4 @@
-# Helsinki City Bike Demand Analysis and Prediction
+# Helsinki–Espoo City Bike Demand Analysis and Prediction
 
 ## Overview
 This project analyzes and predicts city bike departures in Helsinki and Espoo using historical trip data, weather conditions, and station location features.  
