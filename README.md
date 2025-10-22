@@ -1,7 +1,7 @@
 # Helsinki–Espoo City Bike Demand Analysis and Prediction
 
 ## Overview
-This project analyzes and predicts city bike departures in Helsinki and Espoo using historical trip data, weather conditions, and station location features.  
+This project analyzes and predicts city bike departures in Helsinki and Espoo using historical trip data (2020–2024), weather conditions, and station location features.  
 The goal is to uncover patterns in bike usage across time, geography, and environmental factors, and to build predictive models that can estimate the number of bike departures from each station at a given time.  
 The predictive modeling focuses on data from the 100 busiest stations to ensure sufficient trip volume and and to reduce computational resource requirements.
 
@@ -129,7 +129,7 @@ The SHAP analysis shows that the model relies primarily on lag-based features, c
 These results confirm that the model effectively captures short- and long-term temporal dependencies, while weather and station-level factors play secondary but meaningful roles.
 
 ### Summary of Findings
-The analysis demonstrates that **city bike demand** in Helsinki and Espoo follows strong temporal cycles driven by commuting behavior and weather conditions.  
+The analysis demonstrates that city bike demand in Helsinki and Espoo (2020–2024) follows strong temporal cycles driven by commuting behavior and weather conditions.  
 The LightGBM regression model delivers accurate short-term predictions.  
 SHAP analysis confirms that lag-based, temporal, and weather features are the most influential predictors, capturing both short-term fluctuations and weekly seasonality.
 
