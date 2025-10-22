@@ -1,8 +1,9 @@
 # Helsinki City Bike Demand Analysis and Prediction
 
 ## Overview
-This project analyzes and predicts **Helsinki city bike departures** using historical trip data, weather conditions, and station location features.  
-The goal is to uncover patterns in bike usage across time, geography, and environmental factors, and to build predictive models that can estimate the number of bike departures from each station at a given time.
+This project analyzes and predicts city bike departures in Helsinki and Espoo using historical trip data, weather conditions, and station location features.  
+The goal is to uncover patterns in bike usage across time, geography, and environmental factors, and to build predictive models that can estimate the number of bike departures from each station at a given time.  
+The predictive modeling focuses on data from the 100 busiest stations to ensure sufficient trip volume and and to reduce computational resource requirements.
 
 ### Key Objectives
 - Explore relationships between usage, weather, and time variables  
@@ -90,7 +91,7 @@ Usage decreases with distance from the center, indicating proximity to central a
 | **F1-score** | 0.7526 | 0.8803 | — |
 | **Accuracy** | — | — | **0.8387** |
 
-The classifier achieves an overall accuracy of 83.9%, with particularly strong recall for non-zero departure hours (90.6%).
+The classifier achieves an overall accuracy of 83.9%, with particularly strong recall for non-zero departure hours (90.6%).  
 Lower recall for zero-departure hours (71.1%) indicates the model occasionally predicts activity during actual zero-usage periods.
 
 ### Regression Performance
@@ -101,7 +102,8 @@ Lower recall for zero-departure hours (71.1%) indicates the model occasionally p
 | **LightGBM Two-Phase**  | 1.42 | 2.25 | 0.687 |
 
 Both LightGBM models significantly outperform the naive baseline, which predicts departures based on the same hour one week earlier.  
-The single-stage LightGBM regression model achieves slightly better performance across all metrics. The two-phase model introduces additional error due to false non-zero predictions.
+The single-stage LightGBM regression model achieves slightly better performance across all metrics.  
+The two-phase model introduces additional error due to false non-zero predictions.
 
 ### Weekly Prediction Comparison
 ![Weekly Predictions – 3 Stations](figures/station_comparison.png)  
@@ -127,7 +129,7 @@ The SHAP analysis shows that the model relies primarily on lag-based features, c
 These results confirm that the model effectively captures short- and long-term temporal dependencies, while weather and station-level factors play secondary but meaningful roles.
 
 ### Summary of Findings
-The analysis demonstrates that **Helsinki city bike demand** follows strong temporal cycles driven by commuting behavior and weather conditions.  
+The analysis demonstrates that **city bike demand** in Helsinki and Espoo follows strong temporal cycles driven by commuting behavior and weather conditions.  
 The LightGBM regression model delivers accurate short-term predictions.  
 SHAP analysis confirms that lag-based, temporal, and weather features are the most influential predictors, capturing both short-term fluctuations and weekly seasonality.
 
